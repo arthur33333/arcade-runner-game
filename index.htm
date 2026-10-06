@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arcade Runner</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+    canvas {
+      background: #222;
+      border: 3px solid #ff0055;
+      border-radius: 8px;
+      box-shadow: 0 0 20px rgba(255, 0, 85, 0.4);
+    }
+    .info {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="gameCanvas" width="400" height="600"></canvas>
+  <div class="info">Appuyez sur ESPACE ou Touchez l'écran pour sauter</div>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let score = 0;
+    let gameOver = false;
+
+    // Joueur
+    const player = {
+      x: 50,
+      y: 300,
+      size: 20,
+      gravity: 0.6,
+      lift: -10,
+      velocity: 0
+    };
+
+    // Obstacles
+    const obstacles = [];
+    let frame = 0;
+
+    function createObstacle() {
+      const gap = 140;
+      const topHeight = Math.floor(Math.random() * (canvas.height - gap - 100)) + 30;
+      obstacles.push({
+        x: canvas.width,
+        top: topHeight,
+        bottom: canvas.height - topHeight - gap,
+        passed: false
+      });
+    }
+
+    function update() {
+      if (gameOver) return;
+
+      // Physique du joueur
+      player.velocity += player.gravity;
+      player.y += player.velocity;
+
+      // Limites haut / bas
+      if (player.y + player.size > canvas.height || player.y < 0) {
+        gameOver = true;
+      }
+
+      // Gestion des obstacles
+      if (frame % 90 === 0) createObstacle();
+
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        const obs = obstacles[i];
+        obs.x -= 3;
+
+        // Collision
+        if (
+          player.x + player.size > obs.x &&
+          player.x < obs.x + 40 &&
+          (player.y < obs.top || player.y + player.size > canvas.height - obs.bottom)
+        ) {
+          gameOver = true;
+        }
+
+        // Score
+        if (!obs.passed && obs.x < player.x) {
+          score++;
+          obs.passed = true;
+        }
+
+        // Nettoyage
+        if (obs.x < -40) obstacles.splice(i, 1);
+      }
+
+      frame++;
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Dessiner le joueur (Carré Neon)
+      ctx.fillStyle = "#00ffcc";
+      ctx.fillRect(player.x, player.y, player.size, player.size);
+
+      // Dessiner les obstacles
+      ctx.fillStyle = "#ff0055";
+      for (const obs of obstacles) {
+        ctx.fillRect(obs.x, 0, 40, obs.top);
+        ctx.fillRect(obs.x, canvas.height - obs.bottom, 40, obs.bottom);
+      }
+
+      // Score
+      ctx.fillStyle = "#fff";
+      ctx.font = "24px Arial";
+      ctx.fillText("Score: " + score, 20, 40);
+
+      if (gameOver) {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = "#ff0055";
+        ctx.font = "36px Arial";
+        ctx.fillText("GAME OVER", 90, 280);
+
+        ctx.fillStyle = "#fff";
+        ctx.font = "18px Arial";
+        ctx.fillText("Cliquez ou ESPACE pour rejouer", 70, 330);
+      }
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    function jump() {
+      if (gameOver) {
+        // Recommencer
+        player.y = 300;
+        player.velocity = 0;
+        obstacles.length = 0;
+        score = 0;
+        gameOver = false;
+        frame = 0;
+      } else {
+        player.velocity = player.lift;
+      }
+    }
+
+    // Contrôles
+    window.addEventListener("keydown", (e) => { if (e.code === "Space") jump(); });
+    canvas.addEventListener("click", jump);
+
+    loop();
+  </script>
+</body>
+</html>
